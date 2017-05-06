@@ -8,6 +8,7 @@
 
 #include "sd.hpp"
 
+#include <mkl.h>
 
 void test_eigen() {
 	MatrixXd m = MatrixXd::Random(3,3);
@@ -27,6 +28,133 @@ void test_eigen() {
 	MatrixXd msym = m + m.transpose();
 
 
+}
+
+void test_eigen_svd() {
+	Matrix3d a;
+	//a << 0.792207329559554,	0.0357116785741896,	0.678735154857774,
+	//	0.959492426392903,	0.849129305868777,	0.757740130578333,
+	//	0.655740699156587,	0.933993247757551,	0.743132468124916;
+	a << 0, 0, 0, 0, 2, 0, 0, 0, 10;
+
+	Eigen::JacobiSVD<Matrix3d> svd(a, Eigen::ComputeFullU | Eigen::ComputeFullV);
+
+	Matrix3d u = svd.matrixU();
+	Matrix3d v = svd.matrixV();
+	Vector3d svec = svd.singularValues();
+	Matrix3d s = svec.asDiagonal();
+	
+
+	std::cout << "A = " << std::endl << a << std::endl;
+	std::cout << "U = " << std::endl << u << std::endl;
+	std::cout << "S = " << std::endl << s << std::endl;
+	std::cout << "V = " << std::endl << v << std::endl;
+
+	std::cout << "U*S*V' = " << std::endl << u * s * v.transpose() << std::endl;
+
+	Matrix3d sinv = s.transpose();
+	for (int i=0; i<3; i++) {
+		if (abs(svec(i)) > 1.0e-8) {
+			sinv(i,i) = 1.0 / svec(i);
+		} else {
+			sinv(i,i) = 0.0;
+		}
+	}
+
+	Matrix3d ainv = v * sinv * u.transpose();
+	std::cout << "Ainv = " << std::endl << ainv << std::endl;
+
+}
+
+void test_mkl_svd() {
+	double a[3][3] = {
+		//0.792207329559554,	0.0357116785741896,	0.678735154857774,
+		//0.959492426392903,	0.849129305868777,	0.757740130578333,
+		//0.655740699156587,	0.933993247757551,	0.743132468124916,
+		0, 0, 0,
+		0, 2, 0,
+		0, 0, 10,
+	};
+
+	MKL_INT m = 3, n = 3;
+	MKL_INT lda = 3, ldu = 3, ldvt = 3;
+	double superb[3];
+
+	double svec[3], u[3][3], vt[3][3];
+
+	MKL_INT info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'A', 'A',
+		m, n, &a[0][0], lda, svec, &u[0][0], ldu, &vt[0][0], ldvt, superb);
+	
+	if (info > 0) {
+		std::cerr << "DGESVD failed" << std::endl;
+	}
+
+	std::cout << "U = " << std::endl;
+	for (int i=0; i<3; i++) {
+		for (int j=0; j<3; j++) {
+			std::cout << u[i][j] << ",";
+		}
+		std::cout << std::endl;
+	}
+
+	std::cout << "S = " << std::endl;
+	for (int i=0; i<3; i++) {
+		std::cout << svec[i] << std::endl;
+	}
+	std::cout << std::endl;
+
+	std::cout << "V = " << std::endl;
+	for (int i=0; i<3; i++) {
+		for (int j=0; j<3; j++) {
+			std::cout << vt[j][i] << ",";
+		}
+		std::cout << std::endl;
+	}
+}
+
+void test_mkl_gels() {
+	// input matrix
+	double a[3][3] = {
+		//0.792207329559554,	0.0357116785741896,	0.678735154857774,
+		//0.959492426392903,	0.849129305868777,	0.757740130578333,
+		//0.655740699156587,	0.933993247757551,	0.743132468124916,
+		0, 0, 0,
+		0, 2, 0,
+		0, 0, 10,
+	};
+
+	// use unit matrix as RHS to get inverse
+	double b[3][3] = {
+		1, 0, 0, 
+		0, 1, 0,
+		0, 0, 1,
+	};
+
+	MKL_INT m = 3, n = 3;
+	MKL_INT lda = 3, ldb = 3;
+
+	// GELS requires full-rank
+	//MKL_INT info = LAPACKE_dgels(LAPACK_ROW_MAJOR, 'N', 
+	//	m, n, 3, &a[0][0], lda, &b[0][0], ldb);
+
+	double rcond = 1.0e-6;
+	double svec[3];
+	MKL_INT rank = 0;
+	// GELSS use SVD
+	MKL_INT info = LAPACKE_dgelss(LAPACK_ROW_MAJOR, 
+		m, n, 3, &a[0][0], lda, &b[0][0], ldb, svec, rcond, &rank);
+	
+	if (info != 0) {
+		std::cerr << "DGELS failed = " << info << std::endl;
+	}
+
+	std::cout << "PAinv = " << std::endl;
+	for (int i=0; i<3; i++) {
+		for (int j=0; j<3; j++) {
+			std::cout << b[i][j] << ",";
+		}
+		std::cout << std::endl;
+	}
 }
 
 
@@ -422,10 +550,14 @@ int main(int argc, char *argv[])
 {
 
 	//test_eigen();
+	//test_eigen_svd();
+	//test_mkl_svd();
+	test_mkl_gels();
 
 	//test_sd(argc, argv);
 
-	sim_sd(argc, argv);
+	//sim_sd(argc, argv);
+
 
 	return 0;
 }

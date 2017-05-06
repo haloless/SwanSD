@@ -6,6 +6,21 @@
 
 
 
+struct SDEwald
+{
+	double eps_tol;
+	
+	double xi;
+
+	double len[3];
+
+	double rmax;
+	int rnum[3];
+
+	double kmax;
+	int knum[3];
+
+};
 
 
 
@@ -18,6 +33,7 @@ struct StokesianDynamics
 	double dens;
 	double visc;
 
+	// reference length
 	double aref;
 
 	// cutoff surface distance 
@@ -27,6 +43,33 @@ struct StokesianDynamics
 	double dr_lub;
 	// cutoff distance for lub.
 	//double dr_lubmin;
+
+	// 0=unbounded, 1=periodic
+	int bc_mode;
+
+	//double problo[3];
+	//double probhi[3];
+	//double problen[3];
+
+	double prob_lx, prob_ly, prob_lz;
+
+	//
+	// Ewald code
+	//
+
+	double ewald_eps;
+
+	double ewald_xi;
+
+	double ewald_rmax;
+	int ewald_rmax_x, ewald_rmax_y, ewald_rmax_z;
+
+	double ewald_kmax;
+	int ewald_kmax_x, ewald_kmax_y, ewald_kmax_z;
+
+	//
+	// data
+	//
 
 	int npart;
 
